@@ -1,0 +1,64 @@
+!****************************************************************************
+! Sequence:     DEFINE_JMRCC
+!
+! Purpose:      Defines @JMRCC macro function, which is
+!               useful for creating clearance/interference constraints
+!               when optimizing off-axis reflective systems such as TMAs
+!
+! Syntax:       in DEFINE_JMRCC
+!
+! Author:       J. Isenberg     Date: 04-18-03
+!
+! History:      04-18-03 JI     Originally conceived
+!               05-06-09 JI     Formatted for inclusion with Sample Macros
+!*****************************************************************************
+! Similar to algorithm described in J. Michael Rodgers paper:
+! "Control of Packaging Constraints in the Optimization of Unobscured Reflective Systems,"
+! SPIE, Vol. 751, p. 143. (1987)
+!
+! Return value of function is signed distance from point B to line A,
+! measured perpendicular to line.
+! (Rodgers uses delta y only, isn't perpendicular to line).
+! Concept: transform to (z',y') coordinates where "line" is the z' axis.
+! No global coordinate surface need be specified.
+!
+! Function arguments:
+! Arg #1 thru #3:  The Line A.    #1 = Ray#, #2 = field#, #3 = surf#
+! Arg #4 thru #6:  The Point B.   #4 = Ray#, #5 = field#, #6 = surf#
+! Arg #7 thru #8:  Optional line C.  #7 = Ray#, #8 = field#
+! (The # notation for the arguments stems from pre-testing
+! as an ordinary macro, not a macro function.)
+!
+! If args 7 & 8 are non-zero, "the Point" is the intersection
+! of two lines B & C leaving the same surface (#6 = ^sb), otherwise
+! "the Point" is the intercept of Ray #4, Field #5, on surface #6.
+!
+! The line A is the ray LEAVING point A on the indicated surface.
+! Only works when ray is in air, due to optical direction cosines.
+! Distance is positive when point is above line and ray ("line")
+! goes left to right.  Sign does depend on ray direction.
+!
+FCT @JMRCC(num ^ra,num ^fa,num ^sa,num ^rb,num ^fb,num ^sb,num ^rc,num ^fc)
+!          ^ra==#1;^fa==#2;^sa==#3;^rb==#4;^fb==#5;^sb==#6;^rc==#7;^fc==#8
+^zb == (z r^rb f^fb s^sb g^sa)
+^yb == (y r^rb f^fb s^sb g^sa)
+^za == (z r^ra f^fa s^sa)
+^ya == (y r^ra f^fa s^sa)
+^cost == (n r^ra f^fa s^sa)
+^sint == (m r^ra f^fa s^sa)
+if ^rc and ^fc ! Both non-zero, so "point" is where lines B & C intersect
+	^mb == (m r^rb f^fb s^sb g^sa)
+	^nb == (n r^rb f^fb s^sb g^sa)
+	^mc == (m r^rc f^fc s^sb g^sa)
+	^nc == (n r^rc f^fc s^sb g^sa)
+	^zc == (z r^rc f^fc s^sb g^sa)
+	^yc == (y r^rc f^fc s^sb g^sa)
+	^zbc == (^nb*^nc*(^yc-^yb)+^zb*^mb*^nc-^zc*^mc*^nb)/(^mb*^nc-^mc*^nb)
+	^ybc == ^yb+(^zbc-^zb)*^mb/^nb
+	^ypt_wrt_ray == ^cost*(^ybc-^ya)-^sint*(^zbc-^za)
+else ! "Point" is specified point B (ray intercept on a surface)
+	^ypt_wrt_ray == ^cost*(^yb-^ya)-^sint*(^zb-^za)
+end if
+!wri "^ypt_wrt_ray =" ^ypt_wrt_ray
+!rtn
+end fct ^ypt_wrt_ray
